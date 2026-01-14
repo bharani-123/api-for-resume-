@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Parser AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-color: #4f46e5; /* Indigo */
+            --primary-hover: #4338ca;
+            --bg-color: #f3f4f6;
+            --text-dark: #111827;
+            --text-muted: #6b7280;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --radius: 12px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Navbar Styling */
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            padding: 1rem 0;
+        }
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--primary-color) !important;
+            font-size: 1.25rem;
+        }
+        .nav-link {
+            font-weight: 500;
+            color: var(--text-muted) !important;
+            transition: color 0.2s;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary-color) !important;
+        }
+
+        /* Card Styling */
+        .card {
+            border: none;
+            border-radius: var(--radius);
+            box-shadow: var(--card-shadow);
+            background: white;
+            transition: transform 0.2s ease;
+        }
+        
+        /* Buttons */
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            padding: 0.6rem 1.2rem;
+            font-weight: 500;
+            border-radius: 8px;
+        }
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            border-color: var(--primary-hover);
+        }
+        .btn-outline-secondary {
+            border-radius: 8px;
+        }
+
+        /* Alerts */
+        .alert { border-radius: 8px; border: none; }
+    </style>
+    {% block styles %}{% endblock %}
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+        <i class="fas fa-layer-group me-2"></i>ResumeAI
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <div class="navbar-nav ms-auto gap-3">
+        <a class="nav-link" href="/"><i class="fas fa-cloud-upload-alt me-1"></i> Upload</a>
+        <a class="nav-link" href="/dashboard"><i class="fas fa-table me-1"></i> Dashboard</a>
+        <a class="nav-link" href="#" id="resetApiKeyBtnNav"><i class="fas fa-key me-1"></i> API Key</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+{% if system_warnings %}
+<div class="container mt-4" id="system-warnings-banner">
+    <div class="alert alert-warning border-start border-warning border-4 d-flex justify-content-between align-items-center shadow-sm">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-exclamation-triangle fa-lg me-3 text-warning"></i>
+            <div>
+                <strong>Configuration Needed</strong>
+                <div class="small text-muted">Some features may not work until configured.</div>
+            </div>
+        </div>
+        <div>
+            <button class="btn btn-sm btn-light text-dark fw-bold me-2" data-bs-toggle="modal" data-bs-target="#configModal">Fix Issues</button>
+            <button id="dismiss-warnings-btn" class="btn-close"></button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="container py-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category if category in ['success','warning','danger','info'] else 'info' }} alert-dismissible fade show shadow-sm" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+</div>
+
+<div class="modal fade" id="apikeyModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold">Gemini API Setup</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="text-center mb-4">
+            <div class="bg-light rounded-circle d-inline-flex p-3 mb-3">
+                <i class="fas fa-robot fa-2x text-primary"></i>
+            </div>
+            <p class="text-muted small">Enter your Google Gemini API key to enable AI-powered image extraction. This is stored locally in your browser.</p>
+        </div>
+        <div class="form-floating mb-3">
+          <input type="password" id="apikeyInput" class="form-control" placeholder="API Key">
+          <label for="apikeyInput">Paste API Key Here</label>
+        </div>
+        <div id="apikeyAlert" class="alert d-none p-2 small" role="alert"></div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-link text-muted text-decoration-none" id="apikeySkipBtn">Skip</button>
+        <button type="button" class="btn btn-primary px-4" id="apikeySaveBtn">Save Key</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Get Elements
+    const apiModalEl = document.getElementById('apikeyModal');
+    const apiModal = new bootstrap.Modal(apiModalEl, {backdrop: 'static', keyboard: false});
+    const saveBtn = document.getElementById('apikeySaveBtn');
+    const skipBtn = document.getElementById('apikeySkipBtn');
+    const input = document.getElementById('apikeyInput');
+    const resetBtn = document.getElementById('resetApiKeyBtnNav');
+
+    // 2. Define Time Constants
+    const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+
+    // 3. Check for existing key and expiration
+    const storedKey = localStorage.getItem('api_key_value');
+    const expiryStr = localStorage.getItem('api_key_expiry');
+    const now = new Date().getTime();
+
+    // Logic: If no key OR no expiry OR current time is past expiry -> Show Modal
+    if (!storedKey || !expiryStr || now > parseInt(expiryStr)) {
+        // Clear old data if expired
+        localStorage.removeItem('api_key_value');
+        localStorage.removeItem('api_key_expiry');
+        apiModal.show();
+    } else {
+        // Valid Key Exists: Send it to backend silently
+        sendKeyToBackend(storedKey);
+    }
+
+    // 4. Save Button Action
+    saveBtn.addEventListener('click', function() {
+        const key = input.value.trim();
+        if(key) {
+            // Save key
+            localStorage.setItem('api_key_value', key);
+            
+            // Set expiry to NOW + 12 Hours
+            const expiryTime = new Date().getTime() + TWELVE_HOURS_MS;
+            localStorage.setItem('api_key_expiry', expiryTime);
+
+            sendKeyToBackend(key);
+            apiModal.hide();
+        } else {
+            alert("Please enter a valid API Key.");
+        }
+    });
+
+    // 5. Skip Button Action
+    skipBtn.addEventListener('click', function() {
+        apiModal.hide();
+    });
+
+    // 6. "Edit Key" (Reset) Button Action
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            // Clear storage
+            localStorage.removeItem('api_key_value');
+            localStorage.removeItem('api_key_expiry');
+            
+            // Clear input field
+            input.value = '';
+            
+            // Show modal immediately
+            apiModal.show();
+        });
+    }
+
+    // Helper: Send key to Flask
+    function sendKeyToBackend(key) {
+        fetch('/set_api_key', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({api_key: key})
+        }).catch(err => console.error("API Sync Error:", err));
+    }
+});
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
